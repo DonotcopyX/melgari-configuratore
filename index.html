@@ -18,6 +18,27 @@ const supabaseClient = supabase.createClient(
 );
 
 console.log("Supabase collegato");
+async function caricaPrimoPrezzo() {
+
+  const { data, error } = await supabaseClient
+    .from("prezzi")
+    .select("*")
+    .limit(1);
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  if (data && data.length > 0) {
+    document.getElementById("prezzo").innerText =
+      "€ " + data[0].prezzo;
+  }
+}
+
+caricaPrimoPrezzo();
+
+    
 </script>
 body{
     font-family: Arial, sans-serif;
@@ -123,9 +144,9 @@ button:hover{
 
         <h3>Prezzo</h3>
 
-        <div class="prezzo">
-            € 780,89
-        </div>
+<div class="prezzo" id="prezzo">
+    Caricamento...
+</div>
 
         <br>
 
