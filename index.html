@@ -101,7 +101,25 @@ async function caricaPrimoPrezzo() {
 }
 
 caricaPrimoPrezzo();
+async function caricaListino() {
 
+  const { data, error } = await supabaseClient
+    .from("listini")
+    .select("nome")
+    .limit(1);
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  if (data && data.length > 0) {
+    document.getElementById("nome-listino").innerText =
+      data[0].nome;
+  }
+}
+
+caricaListino();
     
 </script>
 <body>
