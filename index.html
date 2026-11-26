@@ -108,8 +108,10 @@ async function caricaListino() {
     .select("nome")
     .limit(1);
 
+  console.log("LISTINI", data);
+  console.log("ERRORE LISTINI", error);
+
   if (error) {
-    console.error(error);
     return;
   }
 
