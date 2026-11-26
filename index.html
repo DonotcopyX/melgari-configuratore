@@ -6,6 +6,19 @@
 <title>Configuratore Melgari</title>
 
 <style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const SUPABASE_URL = "https://igomytehnuihslzmqpju.supabase.co";
+const SUPABASE_KEY = "sb_publishable_fvd4RHW-w-SIwlW6D67uvQ_40EFdae1";
+
+const supabaseClient = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+console.log("Supabase collegato");
+</script>
 body{
     font-family: Arial, sans-serif;
     background:#f5f5f5;
