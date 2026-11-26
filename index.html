@@ -6,40 +6,7 @@
 <title>Configuratore Melgari</title>
 
 <style>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<script>
-const SUPABASE_URL = "https://igomytehnuihslzmqpju.supabase.co";
-const SUPABASE_KEY = "sb_publishable_fvd4RHW-w-SIwlW6D67uvQ_40EFdae1";
-
-const supabaseClient = supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
-
-console.log("Supabase collegato");
-async function caricaPrimoPrezzo() {
-
-  const { data, error } = await supabaseClient
-    .from("prezzi")
-    .select("*")
-    .limit(1);
-
-  if (error) {
-    console.error(error);
-    return;
-  }
-
-  if (data && data.length > 0) {
-    document.getElementById("prezzo").innerText =
-      "€ " + data[0].prezzo;
-  }
-}
-
-caricaPrimoPrezzo();
-
-    
-</script>
+  
 body{
     font-family: Arial, sans-serif;
     background:#f5f5f5;
@@ -103,6 +70,40 @@ button:hover{
 </style>
 
 </head>
+      <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const SUPABASE_URL = "https://igomytehnuihslzmqpju.supabase.co";
+const SUPABASE_KEY = "sb_publishable_fvd4RHW-w-SIwlW6D67uvQ_40EFdae1";
+
+const supabaseClient = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+console.log("Supabase collegato");
+async function caricaPrimoPrezzo() {
+
+  const { data, error } = await supabaseClient
+    .from("prezzi")
+    .select("*")
+    .limit(1);
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  if (data && data.length > 0) {
+    document.getElementById("prezzo").innerText =
+      "€ " + data[0].prezzo;
+  }
+}
+
+caricaPrimoPrezzo();
+
+    
+</script>
 <body>
 
 <h1>Configuratore Serramenti Melgari</h1>
