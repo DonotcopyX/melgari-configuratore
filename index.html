@@ -122,7 +122,27 @@ async function caricaListino() {
 }
 
 caricaListino();
-    
+   async function caricaSvg() {
+
+  const { data, error } = await supabaseClient
+    .from("listini")
+    .select("disegno_svg")
+    .limit(1);
+
+  console.log("SVG", data);
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  if (data && data.length > 0) {
+    document.getElementById("anteprima-svg").innerHTML =
+      data[0].disegno_svg;
+  }
+}
+
+caricaSvg(); 
 </script>
 <body>
 
@@ -133,23 +153,11 @@ caricaListino();
     <div class="box">
         <h2>Anteprima</h2>
 
-        <div class="preview">
+       <div class="preview" id="anteprima-svg">
 
-            <svg width="250" height="400" viewBox="0 0 250 400">
-                <rect x="20" y="20" width="210" height="360"
-                      fill="#ffffff"
-                      stroke="#222"
-                      stroke-width="8"/>
+    Caricamento disegno...
 
-                <rect x="40" y="40" width="170" height="320"
-                      fill="#d9f2ff"
-                      stroke="#444"
-                      stroke-width="4"/>
-
-                <circle cx="195" cy="200" r="6" fill="#444"/>
-            </svg>
-
-        </div>
+</div>
 
     </div>
 
