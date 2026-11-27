@@ -142,13 +142,21 @@ caricaListino();
     return;
   }
 
-  if (data && data.length > 0) {
+    if (data && data.length > 0) {
     document.getElementById("anteprima-svg").innerHTML =
       data[0].disegno_svg;
+
+    const svg = document.querySelector("#anteprima-svg svg");
+    if (svg) {
+      const b = svg.getBBox();
+      svg.setAttribute("viewBox", b.x + " " + b.y + " " + b.width + " " + b.height);
+      svg.removeAttribute("width");
+      svg.removeAttribute("height");
+    }
   }
 }
 
-caricaSvg(); 
+caricaSvg();
 </script>
 <body>
 
