@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Configuratore Melgari</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-  
+
 body{
     font-family: Arial, sans-serif;
     background:#f5f5f5;
@@ -30,7 +32,7 @@ body{
 }
 
 .preview{
-max-width:800px;
+    max-width:800px;
     max-height:800px;
     display:flex;
     justify-content:center;
@@ -38,7 +40,8 @@ max-width:800px;
     border:1px solid #ddd;
     border-radius:10px;
 }
-  .preview svg{
+
+.preview svg{
     width:100%;
     height:auto;
     max-height:700px;
@@ -59,6 +62,13 @@ input{
     color:#0066cc;
 }
 
+.misura-listino{
+    margin-top:6px;
+    font-size:14px;
+    color:#666;
+    min-height:18px;
+}
+
 button{
     width:100%;
     padding:15px;
@@ -73,14 +83,72 @@ button{
 button:hover{
     background:#004c99;
 }
-</style>
 
+@media (max-width:800px){
+    body{
+        padding:15px;
+    }
+    .container{
+        grid-template-columns:1fr;
+    }
+}
+
+</style>
 </head>
-      <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<body>
+
+<h1>Configuratore Serramenti Melgari</h1>
+
+<div class="container">
+
+    <div class="box">
+        <h2>Anteprima</h2>
+
+        <div class="preview" id="anteprima-svg">
+            Caricamento disegno...
+        </div>
+    </div>
+
+    <div class="box">
+        <h2>Dati finestra</h2>
+
+        <h3 id="nome-listino">
+            Caricamento listino...
+        </h3>
+
+        <label for="larghezza">Larghezza (mm)</label>
+        <input type="number" id="larghezza" value="1000">
+
+        <label for="altezza">Altezza (mm)</label>
+        <input type="number" id="altezza" value="1600">
+
+        <h3>Prezzo</h3>
+
+        <div class="prezzo" id="prezzo">
+            Caricamento...
+        </div>
+        <div class="misura-listino" id="misura-listino"></div>
+
+        <br>
+
+        <button>
+            Richiedi Preventivo
+        </button>
+    </div>
+
+</div>
 
 <script>
 const SUPABASE_URL = "https://igomytehnuihslzmqpju.supabase.co";
 const SUPABASE_KEY = "sb_publishable_fvd4RHW-w-SIwlW6D67uvQ_40EFdae1";
+
+// Numero del listino da mostrare (12 = Living MD FI2)
+const LISTINO_ID = 12;
+
+// Per ora il colore e l'altezza maniglia sono fissi
+const COLORE = "bianco";
+const ALTEZZA_MANIGLIA = 400;
 
 const supabaseClient = supabase.createClient(
   SUPABASE_URL,
@@ -88,30 +156,61 @@ const supabaseClient = supabase.createClient(
 );
 
 console.log("Supabase collegato");
-async function caricaPrimoPrezzo() {
 
+async function calcolaPrezzo() {
+
+  const larghezza = Number(document.getElementById("larghezza").value);
+  const altezza = Number(document.getElementById("altezza").value);
+
+  const prezzoEl = document.getElementById("prezzo");
+  const misuraEl = document.getElementById("misura-listino");
+
+  if (!larghezza || !altezza) {
+    prezzoEl.innerText = "-";
+    misuraEl.innerText = "Inserisci larghezza e altezza";
+    return;
+  }
+
+  // Prende la prima misura del listino uguale o piu' grande di quella scritta
   const { data, error } = await supabaseClient
     .from("prezzi")
-    .select("*")
+    .select("larghezza, altezza, prezzo")
+    .eq("listino_id", LISTINO_ID)
+    .eq("variant", COLORE)
+    .eq("altezza_maniglia", ALTEZZA_MANIGLIA)
+    .gte("larghezza", larghezza)
+    .gte("altezza", altezza)
+    .order("larghezza", { ascending: true })
+    .order("altezza", { ascending: true })
     .limit(1);
 
   if (error) {
     console.error(error);
+    prezzoEl.innerText = "Errore";
+    misuraEl.innerText = "";
     return;
   }
 
   if (data && data.length > 0) {
-    document.getElementById("prezzo").innerText =
-      "€ " + data[0].prezzo;
+    const riga = data[0];
+    prezzoEl.innerText = Number(riga.prezzo).toLocaleString("it-IT", {
+      style: "currency",
+      currency: "EUR"
+    });
+    misuraEl.innerText =
+      "Prezzo per la misura di listino " + riga.larghezza + " x " + riga.altezza + " mm";
+  } else {
+    prezzoEl.innerText = "-";
+    misuraEl.innerText = "Misura fuori listino";
   }
 }
 
-caricaPrimoPrezzo();
 async function caricaListino() {
 
   const { data, error } = await supabaseClient
     .from("listini")
     .select("nome")
+    .eq("id", LISTINO_ID)
     .limit(1);
 
   console.log("LISTINI", data);
@@ -127,12 +226,12 @@ async function caricaListino() {
   }
 }
 
-caricaListino();
-   async function caricaSvg() {
+async function caricaSvg() {
 
   const { data, error } = await supabaseClient
     .from("listini")
     .select("disegno_svg")
+    .eq("id", LISTINO_ID)
     .limit(1);
 
   console.log("SVG", data);
@@ -142,66 +241,20 @@ caricaListino();
     return;
   }
 
-    if (data && data.length > 0) {
+  if (data && data.length > 0) {
     document.getElementById("anteprima-svg").innerHTML =
       data[0].disegno_svg;
-
-    const svg = document.querySelector("#anteprima-svg svg");
-    if (svg) {
-      const b = svg.getBBox();
-      svg.setAttribute("viewBox", b.x + " " + b.y + " " + b.width + " " + b.height);
-      svg.removeAttribute("width");
-      svg.removeAttribute("height");
-    }
   }
 }
 
+// Ricalcola il prezzo quando cambia una misura
+document.getElementById("larghezza").addEventListener("input", calcolaPrezzo);
+document.getElementById("altezza").addEventListener("input", calcolaPrezzo);
+
+calcolaPrezzo();
+caricaListino();
 caricaSvg();
 </script>
-<body>
-
-<h1>Configuratore Serramenti Melgari</h1>
-
-<div class="container">
-
-    <div class="box">
-        <h2>Anteprima</h2>
-
-       <div class="preview" id="anteprima-svg">
-
-    Caricamento disegno...
-
-</div>
-
-    </div>
-
-    <div class="box">
-
-        <h2>Dati finestra</h2>
-<h3 id="nome-listino">
-    Caricamento listino...
-</h3>
-        <label>Larghezza</label>
-        <input type="number" value="1000">
-
-        <label>Altezza</label>
-        <input type="number" value="1600">
-
-        <h3>Prezzo</h3>
-
-<div class="prezzo" id="prezzo">
-    Caricamento...
-</div>
-
-        <br>
-
-        <button>
-            Richiedi Preventivo
-        </button>
-
-    </div>
-
-</div>
 
 </body>
 </html>
