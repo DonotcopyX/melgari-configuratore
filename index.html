@@ -482,6 +482,11 @@ async function caricaSvg() {
 function aggiornaDisegno() {
 
   const svg = document.querySelector("#anteprima-svg svg");
+    const finitura =
+    document.getElementById("finitura").value;
+
+console.log("Finitura:", finitura);
+    
   if (!svg) {
     return;
   }
