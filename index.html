@@ -244,12 +244,51 @@ async function caricaSvg() {
   if (data && data.length > 0) {
     document.getElementById("anteprima-svg").innerHTML =
       data[0].disegno_svg;
+    aggiornaDisegno();
   }
 }
 
-// Ricalcola il prezzo quando cambia una misura
-document.getElementById("larghezza").addEventListener("input", calcolaPrezzo);
-document.getElementById("altezza").addEventListener("input", calcolaPrezzo);
+// Adatta le proporzioni del disegno alle misure scritte
+function aggiornaDisegno() {
+
+  const svg = document.querySelector("#anteprima-svg svg");
+  if (!svg) {
+    return;
+  }
+
+  const larghezza = Number(document.getElementById("larghezza").value);
+  const altezza = Number(document.getElementById("altezza").value);
+
+  if (!larghezza || !altezza) {
+    return;
+  }
+
+  // Spazio disponibile nel riquadro
+  const maxLarghezza = document.getElementById("anteprima-svg").clientWidth - 4;
+  const maxAltezza = 650;
+
+  const scala = Math.min(maxLarghezza / larghezza, maxAltezza / altezza);
+
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.style.width = (larghezza * scala) + "px";
+  svg.style.height = (altezza * scala) + "px";
+  svg.style.maxHeight = "none";
+
+  // Le linee restano sottili anche quando il disegno si allarga
+  svg.querySelectorAll("*").forEach(function (el) {
+    el.setAttribute("vector-effect", "non-scaling-stroke");
+  });
+}
+
+// Quando cambia una misura: nuovo prezzo e nuovo disegno
+document.getElementById("larghezza").addEventListener("input", function () {
+  calcolaPrezzo();
+  aggiornaDisegno();
+});
+document.getElementById("altezza").addEventListener("input", function () {
+  calcolaPrezzo();
+  aggiornaDisegno();
+});
 
 calcolaPrezzo();
 caricaListino();
