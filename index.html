@@ -22,6 +22,7 @@ body{
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:20px;
+    align-items:start;
 }
 
 .box{
@@ -47,13 +48,26 @@ body{
     max-height:700px;
 }
 
-input{
+input,
+select{
     width:100%;
     padding:12px;
     margin-bottom:15px;
     border:1px solid #ccc;
     border-radius:8px;
     box-sizing:border-box;
+    font-size:14px;
+    background:white;
+}
+
+.riepilogo{
+    position:sticky;
+    top:0;
+    background:white;
+    padding:10px 0;
+    margin-bottom:10px;
+    border-bottom:1px solid #eee;
+    z-index:1;
 }
 
 .prezzo{
@@ -62,11 +76,30 @@ input{
     color:#0066cc;
 }
 
-.misura-listino{
+.nota{
     margin-top:6px;
     font-size:14px;
     color:#666;
     min-height:18px;
+}
+
+details{
+    border:1px solid #ddd;
+    border-radius:10px;
+    padding:10px 14px;
+    margin-bottom:12px;
+}
+
+summary{
+    font-weight:bold;
+    cursor:pointer;
+    padding:4px 0;
+}
+
+.etichetta-opzione{
+    display:block;
+    margin:12px 0 4px 0;
+    font-size:14px;
 }
 
 button{
@@ -123,14 +156,27 @@ button:hover{
         <label for="altezza">Altezza (mm)</label>
         <input type="number" id="altezza" value="1600">
 
-        <h3>Prezzo</h3>
+        <label for="finitura">Colore</label>
+        <select id="finitura">
+            <option value="bianco">Bianco in massa</option>
+            <option value="rivestito">Rivestito</option>
+        </select>
 
-        <div class="prezzo" id="prezzo">
-            Caricamento...
+        <label for="vetro">Vetro</label>
+        <select id="vetro">
+            <option value="singolo">Vetro singolo</option>
+            <option value="triplo">Vetro triplo</option>
+        </select>
+
+        <div class="riepilogo">
+            <h3>Prezzo</h3>
+            <div class="prezzo" id="prezzo">Caricamento...</div>
+            <div class="nota" id="misura-listino"></div>
+            <div class="nota" id="dettaglio-prezzo"></div>
         </div>
-        <div class="misura-listino" id="misura-listino"></div>
 
-        <br>
+        <h3>Opzioni</h3>
+        <div id="opzioni">Caricamento opzioni...</div>
 
         <button>
             Richiedi Preventivo
@@ -143,12 +189,24 @@ button:hover{
 const SUPABASE_URL = "https://igomytehnuihslzmqpju.supabase.co";
 const SUPABASE_KEY = "sb_publishable_fvd4RHW-w-SIwlW6D67uvQ_40EFdae1";
 
-// Numero del listino da mostrare (12 = Living MD FI2)
-const LISTINO_ID = 12;
+// Numero del listino da mostrare (11 = Living MD FI1)
+const LISTINO_ID = 11;
 
-// Per ora il colore e l'altezza maniglia sono fissi
-const COLORE = "bianco";
-const ALTEZZA_MANIGLIA = 400;
+// Varianti di prezzo presenti nel listino (si riempie all'avvio)
+let variantiDisponibili = [];
+
+// Nomi dei gruppi di opzioni (si possono cambiare qui)
+const NOMI_CAPITOLI = {
+  CREM: "Ferramenta",
+  PROF: "Profili",
+  RIF: "Rifilature"
+};
+
+// Ordine in cui compaiono i gruppi
+const ORDINE_CAPITOLI = ["CREM", "PROF", "RIF"];
+
+// Gruppi che all'inizio restano chiusi
+const CAPITOLI_CHIUSI = ["RIF"];
 
 const supabaseClient = supabase.createClient(
   SUPABASE_URL,
@@ -157,17 +215,62 @@ const supabaseClient = supabase.createClient(
 
 console.log("Supabase collegato");
 
+// Prezzo della misura (senza opzioni) e sovrapprezzi delle scelte fatte
+let prezzoBase = null;
+let sovrapprezzi = {};
+
+function formatoEuro(numero) {
+  return Number(numero).toLocaleString("it-IT", {
+    style: "currency",
+    currency: "EUR"
+  });
+}
+
+// Somma prezzo della misura + sovrapprezzi e lo mostra
+function aggiornaTotale() {
+
+  const prezzoEl = document.getElementById("prezzo");
+  const dettaglioEl = document.getElementById("dettaglio-prezzo");
+
+  if (prezzoBase === null) {
+    prezzoEl.innerText = "-";
+    dettaglioEl.innerText = "";
+    return;
+  }
+
+  let extra = 0;
+  for (const id in sovrapprezzi) {
+    extra += sovrapprezzi[id];
+  }
+
+  prezzoEl.innerText = formatoEuro(prezzoBase + extra);
+  dettaglioEl.innerText =
+    "Misura " + formatoEuro(prezzoBase) + " + opzioni " + formatoEuro(extra);
+}
+
 async function calcolaPrezzo() {
 
   const larghezza = Number(document.getElementById("larghezza").value);
   const altezza = Number(document.getElementById("altezza").value);
 
-  const prezzoEl = document.getElementById("prezzo");
   const misuraEl = document.getElementById("misura-listino");
 
   if (!larghezza || !altezza) {
-    prezzoEl.innerText = "-";
+    prezzoBase = null;
     misuraEl.innerText = "Inserisci larghezza e altezza";
+    aggiornaTotale();
+    return;
+  }
+
+  // La variante di prezzo si compone da colore e vetro (es. "bianco vetro triplo")
+  const finitura = document.getElementById("finitura").value;
+  const vetro = document.getElementById("vetro").value;
+  const nomeVariante = finitura + (vetro === "triplo" ? " vetro triplo" : "");
+
+  if (variantiDisponibili.indexOf(nomeVariante) === -1) {
+    prezzoBase = null;
+    misuraEl.innerText = "Prezzo non disponibile per questa combinazione di colore e vetro";
+    aggiornaTotale();
     return;
   }
 
@@ -176,8 +279,7 @@ async function calcolaPrezzo() {
     .from("prezzi")
     .select("larghezza, altezza, prezzo")
     .eq("listino_id", LISTINO_ID)
-    .eq("variant", COLORE)
-    .eq("altezza_maniglia", ALTEZZA_MANIGLIA)
+    .ilike("variant", nomeVariante)
     .gte("larghezza", larghezza)
     .gte("altezza", altezza)
     .order("larghezza", { ascending: true })
@@ -186,23 +288,146 @@ async function calcolaPrezzo() {
 
   if (error) {
     console.error(error);
-    prezzoEl.innerText = "Errore";
-    misuraEl.innerText = "";
+    prezzoBase = null;
+    misuraEl.innerText = "Errore nel calcolo del prezzo";
+    aggiornaTotale();
     return;
   }
 
   if (data && data.length > 0) {
     const riga = data[0];
-    prezzoEl.innerText = Number(riga.prezzo).toLocaleString("it-IT", {
-      style: "currency",
-      currency: "EUR"
-    });
+    prezzoBase = Number(riga.prezzo);
     misuraEl.innerText =
       "Prezzo per la misura di listino " + riga.larghezza + " x " + riga.altezza + " mm";
   } else {
-    prezzoEl.innerText = "-";
+    prezzoBase = null;
     misuraEl.innerText = "Misura fuori listino";
   }
+
+  aggiornaTotale();
+}
+
+async function caricaOpzioni() {
+
+  const contenitore = document.getElementById("opzioni");
+
+  const { data: opzioni, error: erroreOpzioni } = await supabaseClient
+    .from("opzioni")
+    .select("id, capitolo, descrizione")
+    .eq("listino_id", LISTINO_ID)
+    .eq("visibile", true)
+    .order("id", { ascending: true });
+
+  console.log("OPZIONI", opzioni);
+  console.log("ERRORE OPZIONI", erroreOpzioni);
+
+  if (erroreOpzioni) {
+    contenitore.innerText = "Errore nel caricamento delle opzioni.";
+    return;
+  }
+
+  if (!opzioni || opzioni.length === 0) {
+    contenitore.innerText =
+      "Nessuna opzione trovata. Controlla i permessi di lettura su Supabase.";
+    return;
+  }
+
+  const ids = opzioni.map(function (o) { return o.id; });
+
+  const { data: valori, error: erroreValori } = await supabaseClient
+    .from("opzioni_valori")
+    .select("id, opzione_id, descrizione, standard, sovrapprezzo")
+    .in("opzione_id", ids)
+    .order("id", { ascending: true });
+
+  console.log("VALORI", valori);
+  console.log("ERRORE VALORI", erroreValori);
+
+  if (erroreValori || !valori || valori.length === 0) {
+    contenitore.innerText =
+      "Nessuna scelta trovata. Controlla i permessi di lettura su Supabase.";
+    return;
+  }
+
+  // Divide le opzioni nei gruppi (capitoli)
+  const gruppi = {};
+  opzioni.forEach(function (o) {
+    const chiave = o.capitolo || "ALTRE";
+    if (!gruppi[chiave]) {
+      gruppi[chiave] = [];
+    }
+    gruppi[chiave].push(o);
+  });
+
+  function posizione(chiave) {
+    const i = ORDINE_CAPITOLI.indexOf(chiave);
+    return i === -1 ? 99 : i;
+  }
+
+  const chiavi = Object.keys(gruppi).sort(function (a, b) {
+    return posizione(a) - posizione(b);
+  });
+
+  contenitore.innerHTML = "";
+  sovrapprezzi = {};
+
+  chiavi.forEach(function (chiave) {
+
+    const dettagli = document.createElement("details");
+    dettagli.open = CAPITOLI_CHIUSI.indexOf(chiave) === -1;
+
+    const titolo = document.createElement("summary");
+    titolo.textContent = NOMI_CAPITOLI[chiave] || "Altre opzioni";
+    dettagli.appendChild(titolo);
+
+    gruppi[chiave].forEach(function (opzione) {
+
+      const scelte = valori.filter(function (v) {
+        return v.opzione_id === opzione.id;
+      });
+
+      if (scelte.length === 0) {
+        return;
+      }
+
+      const etichetta = document.createElement("label");
+      etichetta.className = "etichetta-opzione";
+      etichetta.textContent = opzione.descrizione;
+
+      const menu = document.createElement("select");
+
+      scelte.forEach(function (v) {
+        const voce = document.createElement("option");
+        const extra = Number(v.sovrapprezzo) || 0;
+
+        voce.value = v.id;
+        voce.dataset.sovrapprezzo = extra;
+        voce.textContent = v.descrizione + (extra > 0 ? " (+ " + formatoEuro(extra) + ")" : "");
+
+        if (v.standard) {
+          voce.selected = true;
+        }
+
+        menu.appendChild(voce);
+      });
+
+      function registraScelta() {
+        const scelta = menu.options[menu.selectedIndex];
+        sovrapprezzi[opzione.id] = Number(scelta.dataset.sovrapprezzo) || 0;
+        aggiornaTotale();
+      }
+
+      menu.addEventListener("change", registraScelta);
+      registraScelta();
+
+      dettagli.appendChild(etichetta);
+      dettagli.appendChild(menu);
+    });
+
+    contenitore.appendChild(dettagli);
+  });
+
+  aggiornaTotale();
 }
 
 async function caricaListino() {
@@ -277,6 +502,9 @@ function aggiornaDisegno() {
   // Le linee restano sottili anche quando il disegno si allarga
   svg.querySelectorAll("*").forEach(function (el) {
     el.setAttribute("vector-effect", "non-scaling-stroke");
+    if (el.hasAttribute("stroke-width")) {
+      el.setAttribute("stroke-width", "1.2");
+    }
   });
 }
 
@@ -290,9 +518,35 @@ document.getElementById("altezza").addEventListener("input", function () {
   aggiornaDisegno();
 });
 
-calcolaPrezzo();
+document.getElementById("finitura").addEventListener("change", calcolaPrezzo);
+document.getElementById("vetro").addEventListener("change", calcolaPrezzo);
+
+// Legge quali varianti di prezzo esistono per questo listino
+async function caricaVarianti() {
+
+  const { data, error } = await supabaseClient
+    .from("prezzi")
+    .select("variant")
+    .eq("listino_id", LISTINO_ID);
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  const nomi = {};
+  (data || []).forEach(function (riga) {
+    nomi[String(riga.variant).toLowerCase()] = true;
+  });
+
+  variantiDisponibili = Object.keys(nomi);
+  console.log("VARIANTI", variantiDisponibili);
+}
+
+caricaVarianti().then(calcolaPrezzo);
 caricaListino();
 caricaSvg();
+caricaOpzioni();
 </script>
 
 </body>
