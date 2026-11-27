@@ -490,7 +490,11 @@ console.log("Finitura:", finitura);
   if (!svg) {
     return;
   }
+const vetro = svg.querySelector("#vetro");
 
+if (vetro) {
+    vetro.setAttribute("fill", "#CCE8F5");
+}
   const larghezza = Number(document.getElementById("larghezza").value);
   const altezza = Number(document.getElementById("altezza").value);
 
